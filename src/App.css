@@ -1,0 +1,161 @@
+/* Page container should always cover viewport height so white never peeks through */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+  min-height: 100vh; /* key line */
+}
+
+/* Header / top bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  opacity: 0.95;
+}
+
+/* Cards / panels */
+.panel {
+  background: var(--panel);
+  border: 1px solid rgba(123, 97, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  backdrop-filter: blur(4px);
+}
+
+.panel h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+/* Metrics grid */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.metric {
+  display: grid;
+  gap: 8px;
+}
+
+.metric .value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.metric .label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Sections grid */
+.sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 20px;
+  margin-top: 8px;
+}
+
+/* Forms */
+.input {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  padding: 0 12px;
+  outline: none;
+}
+
+.input::placeholder {
+  color: #8a95ab;
+}
+
+.helper {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Buttons with gradient accent */
+.button {
+  user-select: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: white;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  box-shadow: 0 8px 24px rgba(123, 97, 255, 0.35), inset 0 0 0 1px rgba(255,255,255,0.06);
+  transition: transform .05s ease, filter .15s ease;
+}
+
+.button:hover {
+  filter: brightness(1.05);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+/* Wallet button variant */
+.wallet {
+  padding: 10px 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2a3350, #1b2540);
+  border: 1px solid rgba(123, 97, 255, 0.18);
+}
+
+.wallet.connected {
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  border-color: transparent;
+}
+
+/* Stakes table */
+.stakes {
+  margin-top: 24px;
+}
+
+.stakeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.stakeRow + .stakeRow {
+  margin-top: 10px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 980px) {
+  .metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .sections { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .metric .value { font-size: 18px; }
+  .topbar { flex-direction: column; align-items: stretch; gap: 8px; }
+}

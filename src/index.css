@@ -1,0 +1,31 @@
+/* Global theme tokens */
+:root {
+  --bg: #0a0f18;
+  --bg2: #0b1220;
+  --panel: rgba(22, 28, 43, 0.9);
+  --text: #e7ebf3;
+  --muted: #9aa7bd;
+  --accent1: #7b61ff;
+  --accent2: #ff4ecd;
+}
+
+/* Make the background cover the entire app */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(80vw 80vh at 20% -10%, #101a2e 0%, transparent 60%),
+    radial-gradient(60vw 60vh at 120% 10%, #0f1930 0%, transparent 70%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  background-attachment: fixed;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Reset */
+* {
+  box-sizing: border-box;
+}
+
+/* Optional: links */
+a { color: inherit; text-decoration: none; }

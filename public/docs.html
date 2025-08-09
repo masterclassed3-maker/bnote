@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>bNote Docs</title>
+  <style>
+    body{margin:0;background:#0a0e1a;color:#E8F1FF;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}
+    .wrap{max-width:900px;margin:0 auto}
+    h1{font-size:28px;margin:0 0 8px}
+    h2{margin-top:28px}
+    .card{background:rgba(12,16,30,0.85);border:1px solid rgba(132,234,255,0.12);border-radius:16px;padding:16px;margin:14px 0}
+    code,pre{background:#0b0f1d;padding:2px 6px;border-radius:6px}
+    a{color:#9fdcff}
+    .muted{opacity:.85}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>BankNote (bNote) — Documentation</h1>
+    <div class="muted">Contract: 0x05b78c242619d49792B51F1001F56694BA66d6e9 (PulseChain)</div>
+
+    <div class="card">
+      <h2>Overview</h2>
+      <p>bNote is an PRC-20 token with staking. When you stake, your tokens are burned and you receive <em>shares</em>. When you end the stake, you mint back principal minus any penalties. Share rate can increase over time (HEX-like ratchet).</p>
+    </div>
+
+    <div class="card">
+      <h2>Staking</h2>
+      <ul>
+        <li><strong>Min/Max days:</strong> On-chain enforced (shown in the app).</li>
+        <li><strong>Longer Pays Better (LPB):</strong> Extra bonus based on years staked up to a cap.</li>
+        <li><strong>Bigger Pays Better (BPB):</strong> Extra bonus based on stake size up to a cap.</li>
+        <li><strong>APY:</strong> Displayed as APR (basis points) in the app.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Penalties</h2>
+      <ul>
+        <li><strong>Early end:</strong> Scales with remaining days (up to the early penalty max).</li>
+        <li><strong>Late end:</strong> Increases the longer you wait past unlock (up to the late penalty max).</li>
+        <li>Exact penalties are computed on-chain using block timestamps.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Share Rate</h2>
+      <p>Share rate is used to convert bNote to staking shares. Ending high-performing stakes can ratchet the share rate upward, protecting earlier stakers (similar to HEX mechanics).</p>
+    </div>
+
+    <div class="card">
+      <h2>FAQs</h2>
+      <p><strong>Q:</strong> When do late penalties start?<br/>
+         <strong>A:</strong> Any time after the unlock day (end of your lock period).</p>
+      <p><strong>Q:</strong> Do I have to keep the app open?<br/>
+         <strong>A:</strong> No. Staking state lives on-chain.</p>
+    </div>
+
+    <p class="muted">This page is informational only and not financial advice.</p>
+  </div>
+</body>
+</html>
