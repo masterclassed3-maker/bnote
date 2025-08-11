@@ -1,63 +1,483 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>bNote Docs</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BankNote • Docs</title>
+  <meta name="description" content="BankNote (bNote) staking docs: how it works, bonuses, penalties, analytics, and FAQs." />
   <style>
-    body{margin:0;background:#0a0e1a;color:#E8F1FF;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}
-    .wrap{max-width:900px;margin:0 auto}
-    h1{font-size:28px;margin:0 0 8px}
-    h2{margin-top:28px}
-    .card{background:rgba(12,16,30,0.85);border:1px solid rgba(132,234,255,0.12);border-radius:16px;padding:16px;margin:14px 0}
-    code,pre{background:#0b0f1d;padding:2px 6px;border-radius:6px}
-    a{color:#9fdcff}
-    .muted{opacity:.85}
+    :root{
+      --bg:#0a0e1a;
+      --panel:#0e1426;
+      --card:#141c30;
+      --ink:#E8F1FF;
+      --muted:#9fb3d9;
+      --line: rgba(132,234,255,0.15);
+      --accent:#7ee0ff;
+      --accent2:#8c7eff;
+      --good:#9EE493;
+      --bad:#FF8DA1;
+      --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    html,body{margin:0;padding:0;background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(132,234,255,0.12), transparent),
+      radial-gradient(1200px 600px at 80% 110%, rgba(255,132,234,0.10), transparent),
+      var(--bg);
+      color:var(--ink);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      line-height:1.5;
+    }
+    a{color:var(--accent);text-decoration:none}
+    a:hover{opacity:.9}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    .hero{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px
+    }
+    .logoDot{width:14px;height:14px;border-radius:999px;
+      background:linear-gradient(135deg,#88f,#8ff);
+      box-shadow:0 0 18px rgba(136,136,255,.6)
+    }
+    .btn{
+      background:linear-gradient(135deg, rgba(136,136,255,.25), rgba(136,255,255,.25));
+      border:1px solid rgba(136,200,255,.35);
+      color:var(--ink); padding:10px 14px;border-radius:12px;cursor:pointer
+    }
+    .btn.secondary{
+      background:rgba(132,234,255,.12);
+      border:1px solid rgba(132,234,255,.3);
+      color:#8ff
+    }
+    .btn.small{padding:8px 10px;border-radius:10px;font-size:14px}
+    .grid{display:grid;gap:14px}
+    .two{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+    .three{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 6px 20px rgba(0,0,0,.25)
+    }
+    .panel{
+      background:var(--panel);
+      border:1px solid rgba(132,234,255,.12);
+      border-radius:16px; padding:16px; margin-top:14px;
+      box-shadow:0 6px 20px rgba(0,0,0,.25)
+    }
+    .h{font-weight:800;letter-spacing:.3px}
+    .muted{color:var(--muted)}
+    .mono{font-family:var(--mono)}
+    .row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px dashed var(--line)}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px;color:var(--muted)}
+    .toc{position:sticky;top:12px}
+    .toc a{display:block;padding:6px 0;color:var(--muted)}
+    .toc a:hover{color:var(--ink)}
+    .kbd{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);padding:2px 6px;border-radius:6px}
+    details{background:rgba(20,28,48,.6);border:1px solid rgba(132,234,255,.12);border-radius:12px;padding:10px 12px}
+    summary{cursor:pointer;font-weight:700}
+    code{font-family:var(--mono);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}
+    pre{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:12px;border-radius:12px;overflow:auto}
+    .pill{display:inline-flex;align-items:center;gap:8px}
+    .copy{margin-left:8px}
+    .warn{color:var(--bad)}
+    .good{color:var(--good)}
+    .list{margin:8px 0 0 18px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>BankNote (bNote) — Documentation</h1>
-    <div class="muted">Contract: 0x05b78c242619d49792B51F1001F56694BA66d6e9 (PulseChain)</div>
-
-    <div class="card">
-      <h2>Overview</h2>
-      <p>bNote is an PRC-20 token with staking. When you stake, your tokens are burned and you receive <em>shares</em>. When you end the stake, you mint back principal minus any penalties. Share rate can increase over time (HEX-like ratchet).</p>
+    <div class="hero">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="logoDot"></div>
+        <div>
+          <div class="h">BankNote • Documentation</div>
+          <div class="muted" style="font-size:12px">PulseChain • bNote</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn secondary small" href="/">← Back to App</a>
+        <button class="btn small" id="addChainBtn">Add PulseChain</button>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Staking</h2>
-      <ul>
-        <li><strong>Min/Max days:</strong> On-chain enforced (shown in the app).</li>
-        <li><strong>Longer Pays Better (LPB):</strong> Extra bonus based on years staked up to a cap.</li>
-        <li><strong>Bigger Pays Better (BPB):</strong> Extra bonus based on stake size up to a cap.</li>
-        <li><strong>APY:</strong> Displayed as APR (basis points) in the app.</li>
-      </ul>
-    </div>
+    <div class="grid two">
+      <!-- TOC -->
+      <nav class="card toc">
+        <div class="h" style="margin-bottom:8px">Quick Nav</div>
+        <a href="#quickstart">Quick Start</a>
+        <a href="#basics">Key Parameters</a>
+        <a href="#staking">How Staking Works</a>
+        <a href="#bonuses">LPB & BPB Bonuses</a>
+        <a href="#share-rate">Share Rate (Up-Only)</a>
+        <a href="#penalties">Early & Late Penalties</a>
+        <a href="#examples">Worked Examples</a>
+        <a href="#using-dapp">Using the dApp</a>
+        <a href="#analytics">Analytics Explained</a>
+        <a href="#mobile">Mobile Wallet Tips</a>
+        <a href="#faq">FAQ</a>
+        <a href="#troubleshoot">Troubleshooting</a>
+        <a href="#glossary">Glossary</a>
+        <a href="#contract">Contract & Links</a>
+        <a href="#disclaimer">Disclaimer</a>
+      </nav>
 
-    <div class="card">
-      <h2>Penalties</h2>
-      <ul>
-        <li><strong>Early end:</strong> Scales with remaining days (up to the early penalty max).</li>
-        <li><strong>Late end:</strong> Increases the longer you wait past unlock (up to the late penalty max).</li>
-        <li>Exact penalties are computed on-chain using block timestamps.</li>
-      </ul>
-    </div>
+      <!-- Content -->
+      <main class="grid" style="gap:14px">
+        <!-- Quick Start -->
+        <section id="quickstart" class="panel">
+          <div class="h">Quick Start</div>
+          <div class="grid two" style="margin-top:10px">
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">1) Connect</div>
+              <ul class="list">
+                <li>Open the app and click <span class="kbd">Connect Wallet</span>.</li>
+                <li>Use a browser wallet (e.g., MetaMask) or a mobile wallet via WalletConnect.</li>
+                <li>Ensure you’re on <b>PulseChain</b>. Use “Add PulseChain” above if needed.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">2) Stake</div>
+              <ul class="list">
+                <li>Enter <b>Amount</b> and <b>Days</b> (whole number).</li>
+                <li>Review the live <b>Estimates</b>: unlock date, LPB/BPB, shares, payout.</li>
+                <li>Click <span class="kbd">Stake</span> and confirm the transaction.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">3) End Stake</div>
+              <ul class="list">
+                <li>On or after the unlock day, end by the index in “Your Stakes” or the quick form.</li>
+                <li class="warn"><b>Early/Late penalties</b> may apply if not ended on the unlock day.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">4) Export / Track</div>
+              <ul class="list">
+                <li>Use <b>Export CSV</b> or <b>Copy CSV</b> to track stakes.</li>
+                <li>Check the <b>Analytics</b> section for charts and market stats.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
 
-    <div class="card">
-      <h2>Share Rate</h2>
-      <p>Share rate is used to convert bNote to staking shares. Ending high-performing stakes can ratchet the share rate upward, protecting earlier stakers (similar to HEX mechanics).</p>
-    </div>
+        <!-- Key Parameters -->
+        <section id="basics" class="panel">
+          <div class="h">Key Parameters</div>
+          <div class="grid three" style="margin-top:10px">
+            <div class="card">
+              <div class="row"><div>Network</div><div class="tag">PulseChain (chainId <span class="mono">0x171</span>)</div></div>
+              <div class="row"><div>RPC</div><div class="mono">https://rpc.pulsechain.com</div></div>
+              <div class="row"><div>Explorer</div><div><a href="https://otter.pulsechain.com/" target="_blank" rel="noreferrer">otter.pulsechain.com</a></div></div>
+            </div>
+            <div class="card">
+              <div class="row"><div>Symbol</div><div class="mono">bNote</div></div>
+              <div class="row"><div>Decimals</div><div class="mono">18</div></div>
+              <div class="row"><div>Initial Supply</div><div class="mono">2,100,000 bNote</div></div>
+            </div>
+            <div class="card">
+              <div class="row"><div>APR</div><div>3.69% (basis points 369)</div></div>
+              <div class="row"><div>LPB</div><div>+20% shares / year (up to 10 years)</div></div>
+              <div class="row"><div>BPB</div><div>Up to +10% shares at 210,000 bNote</div></div>
+            </div>
+          </div>
 
-    <div class="card">
-      <h2>FAQs</h2>
-      <p><strong>Q:</strong> When do late penalties start?<br/>
-         <strong>A:</strong> Any time after the unlock day (end of your lock period).</p>
-      <p><strong>Q:</strong> Do I have to keep the app open?<br/>
-         <strong>A:</strong> No. Staking state lives on-chain.</p>
-    </div>
+          <div class="card" style="margin-top:10px">
+            <div class="row">
+              <div>Contract Address</div>
+              <div class="pill">
+                <span class="mono" id="addr">0x473EB99177965277275B3e83bCE3d4884473878D</span>
+                <button class="btn small copy" id="copyBtn">Copy</button>
+                <a class="btn small secondary" target="_blank" rel="noreferrer"
+                  href="https://otter.pulsechain.com/address/0x473EB99177965277275B3e83bCE3d4884473878D">View on Explorer</a>
+              </div>
+            </div>
+          </div>
+        </section>
 
-    <p class="muted">This page is informational only and not financial advice.</p>
+        <!-- How Staking Works -->
+        <section id="staking" class="panel">
+          <div class="h">How Staking Works</div>
+          <ol class="list">
+            <li><b>Stake start:</b> You burn bNote and receive <b>shares</b> (not tradable). Share amount = your staked amount ÷ <b>shareRate</b>, then multiplied by LPB & BPB bonuses.</li>
+            <li><b>While staked:</b> Your stake accrues yield based on APR and protocol rules. Share rate is up-only and may increase globally when stakes end (see below).</li>
+            <li><b>Stake end:</b> You mint back principal + rewards (minus penalties if early/late). The end can also ratchet the global share rate up.</li>
+          </ol>
+        </section>
+
+        <!-- LPB & BPB -->
+        <section id="bonuses" class="panel">
+          <div class="h">LPB & BPB Bonuses</div>
+          <div class="grid two" style="margin-top:10px">
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">LPB — Longer Pays Better</div>
+              <ul class="list">
+                <li>+20% shares per full 365 days staked.</li>
+                <li>Capped at 10 full years (maximum +200%).</li>
+              </ul>
+              <div class="muted" style="font-size:14px;margin-top:6px">
+                <b>Formula (bps):</b> <code>LPB = 2000 × min(10, floor(days/365))</code>
+              </div>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">BPB — Bigger Pays Better</div>
+              <ul class="list">
+                <li>Linear bonus based on amount, up to +10% at <b>210,000 bNote</b>.</li>
+                <li>Amounts ≥ 210,000 bNote receive the full +10% BPB.</li>
+              </ul>
+              <div class="muted" style="font-size:14px;margin-top:6px">
+                <b>Formula (bps):</b> <code>BPB = 1000 × min(1, amount / 210,000)</code> (all values in whole bNote)
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:10px">
+            <div><b>Effective shares</b> = <code>(amount / shareRate) × (1 + (LPB+BPB)/10000)</code></div>
+          </div>
+        </section>
+
+        <!-- Share Rate -->
+        <section id="share-rate" class="panel">
+          <div class="h">Share Rate (Up-Only Ratchet)</div>
+          <p class="muted">
+            Share rate determines how many <b>shares</b> you get per bNote. When large/long stakes end with strong performance,
+            the protocol may raise the <b>shareRate</b> so that future stakes need more bNote to get the same shares.
+            This protects early/long stakers and prevents dilution. The rate never goes down.
+          </p>
+        </section>
+
+        <!-- Penalties -->
+        <section id="penalties" class="panel">
+          <div class="h">Early & Late Penalties</div>
+          <div class="grid two" style="margin-top:10px">
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">Early End</div>
+              <ul class="list">
+                <li>Ending <b>before</b> the full lock period applies a penalty that scales with the days remaining.</li>
+                <li>Maximum early penalty is <b>25%</b> of principal.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">Late End</div>
+              <ul class="list">
+                <li>Ending <b>after</b> the unlock day can apply a penalty that grows the longer you wait.</li>
+                <li>Maximum late penalty is <b>25%</b>.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="muted" style="margin-top:8px"><b>Tip:</b> Ending on the unlock day avoids late penalties.</p>
+        </section>
+
+        <!-- Worked Examples -->
+        <section id="examples" class="panel">
+          <div class="h">Worked Examples (Illustrative)</div>
+          <div class="grid two" style="margin-top:10px">
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">Example A — 10,000 bNote for 365 days</div>
+              <ul class="list">
+                <li>LPB = +20% (one full year). BPB ≈ +4.76% (10,000 / 210,000).</li>
+                <li>Total bonus ≈ 24.76% → effective shares ≈ <code>(10,000 / shareRate) × 1.2476</code>.</li>
+                <li>APR 3.69% (est. payout displayed in the app’s Estimates box).</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">Example B — 250,000 bNote for 1,095 days (~3y)</div>
+              <ul class="list">
+                <li>LPB = +60% (3 years). BPB hits cap = +10%.</li>
+                <li>Total bonus = +70% → effective shares ≈ <code>(amount / shareRate) × 1.70</code>.</li>
+                <li>Higher shares → stronger stake weight & yield path.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="muted"><b>Note:</b> These are simplified illustrations. Actual on-chain outcomes depend on timestamps and protocol math.</p>
+        </section>
+
+        <!-- Using the dApp -->
+        <section id="using-dapp" class="panel">
+          <div class="h">Using the dApp</div>
+          <div class="grid two" style="margin-top:10px">
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">Start a Stake</div>
+              <ol class="list">
+                <li>Enter <b>Amount</b> and <b>Days</b> (whole integer).</li>
+                <li>Review <b>Estimates</b>: unlock date, LPB/BPB, estimated shares, estimated payout.</li>
+                <li>Click <b>Stake</b> and confirm.</li>
+              </ol>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">End a Stake</div>
+              <ol class="list">
+                <li>Find your stake index in <b>Your Stakes</b>.</li>
+                <li>Click <b>End</b> on that row, or use “End by index”.</li>
+                <li>Read the penalty warning (if any) and confirm.</li>
+              </ol>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">CSV & Refresh</div>
+              <ul class="list">
+                <li>Use <b>Export CSV</b> or <b>Copy CSV</b> from the <b>Your Stakes</b> header.</li>
+                <li>Click <b>Refresh</b> to re-query balances, stakes, and prices.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="h" style="margin-bottom:6px">Docs Button</div>
+              <ul class="list">
+                <li>The <b>Docs</b> button in the app opens this page.</li>
+                <li>You can keep it open while interacting with the app.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Analytics -->
+        <section id="analytics" class="panel">
+          <div class="h">Analytics Explained</div>
+          <div class="grid two" style="margin-top:10px">
+            <div class="card">
+              <ul class="list">
+                <li><b>Price (USD/PLS):</b> Pulled from Dexscreener’s top-liquidity pair on PulseChain.</li>
+                <li><b>Wallet Value:</b> Your bNote balance × the current price.</li>
+                <li><b>Market Cap (est.):</b> Circulating bNote × price (informational only).</li>
+                <li><b>Staked (burned):</b> Initial supply − current total supply.</li>
+                <li><b>APR:</b> Protocol APR (e.g., 3.69%).</li>
+              </ul>
+            </div>
+            <div class="card">
+              <ul class="list">
+                <li><b>Locked vs Circulating:</b> Distribution doughnut chart.</li>
+                <li><b>Staking Ladder:</b> Timeline of stake offsets & durations.</li>
+                <li><b>Maturity Buckets:</b> Amount grouped by lock windows.</li>
+                <li><b>Unlocks (90d):</b> Upcoming maturities by day.</li>
+                <li><b>Penalty Curve Preview:</b> Hypothetical penalty vs. days from unlock.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Mobile -->
+        <section id="mobile" class="panel">
+          <div class="h">Mobile Wallet Tips</div>
+          <ul class="list">
+            <li>Use the in-app browser of your wallet (e.g., MetaMask Mobile → Browser → open your site).</li>
+            <li>If connecting via WalletConnect, ensure your domain is approved in your WC Cloud project and that you complete the handshake in the wallet.</li>
+            <li>Make sure PulseChain is added/selected before staking.</li>
+          </ul>
+        </section>
+
+        <!-- FAQ -->
+        <section id="faq" class="panel">
+          <div class="h">FAQ</div>
+          <div class="grid two" style="margin-top:10px">
+            <details open><summary>Is the share rate supposed to go down?</summary>
+              <div class="muted">No. The share rate is up-only. It may increase when stakes end so future stakes need more bNote to earn the same shares.</div>
+            </details>
+            <details><summary>Do LPB/BPB bonuses increase my principal?</summary>
+              <div class="muted">No. Bonuses increase your <b>shares</b> at stake start, which affects your stake’s weight and potential payout. Principal stays the same.</div>
+            </details>
+            <details><summary>What happens if I end early or late?</summary>
+              <div class="muted">A penalty may apply (up to 25%), scaling with time left (early) or time past unlock (late). Ending on the unlock day avoids late penalties.</div>
+            </details>
+            <details><summary>Why are price stats missing sometimes?</summary>
+              <div class="muted">Price/volume rely on third-party data. If no pair is detected or the API is down, those KPIs may be unavailable temporarily.</div>
+            </details>
+            <details><summary>Are Estimates exact?</summary>
+              <div class="muted">They’re guidance only. Actual results depend on on-chain timestamps, rate changes, and contract rules.</div>
+            </details>
+          </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section id="troubleshoot" class="panel">
+          <div class="h">Troubleshooting</div>
+          <ul class="list">
+            <li><b>“Failed to switch networks”</b> — Click <b>Add PulseChain</b> above, approve in your wallet, then reconnect.</li>
+            <li><b>“User rejected”</b> — You canceled in wallet. Try again and confirm.</li>
+            <li><b>“Invalid stake days”</b> — Enter a whole number between the min and max shown.</li>
+            <li><b>WalletConnect won’t pair</b> — Ensure your domain is on the allowed list in WC Cloud, then retry the QR/connect flow.</li>
+          </ul>
+        </section>
+
+        <!-- Glossary -->
+        <section id="glossary" class="panel">
+          <div class="h">Glossary</div>
+          <ul class="list">
+            <li><b>APR:</b> Annual Percentage Rate (simple, not APY compounding).</li>
+            <li><b>LPB/BPB:</b> Longer/Bigger Pays Better share bonuses.</li>
+            <li><b>Share Rate:</b> Global conversion between bNote and shares (up-only).</li>
+            <li><b>Shares:</b> Internal accounting units representing your stake weight.</li>
+            <li><b>Basis Points (bps):</b> Hundredths of a percent (100 bps = 1%).</li>
+          </ul>
+        </section>
+
+        <!-- Contract -->
+        <section id="contract" class="panel">
+          <div class="h">Contract & Links</div>
+          <div class="grid two" style="margin-top:10px">
+            <div class="card">
+              <div class="row"><div>Address</div><div class="mono">0x473EB99177965277275B3e83bCE3d4884473878D</div></div>
+              <div class="row"><div>Chain</div><div>PulseChain (<span class="mono">0x171</span>)</div></div>
+              <div class="row"><div>Explorer</div><div><a target="_blank" rel="noreferrer" href="https://otter.pulsechain.com/address/0x473EB99177965277275B3e83bCE3d4884473878D">View contract</a></div></div>
+            </div>
+            <div class="card">
+              <div class="row"><div>App</div><div><a href="/" >Open dApp</a></div></div>
+              <div class="row"><div>Docs</div><div><a href="/docs.html">This page</a></div></div>
+              <div class="row"><div>Pair (price)</div><div class="muted">Auto-detected in the app</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Disclaimer -->
+        <section id="disclaimer" class="panel">
+          <div class="h">Disclaimer</div>
+          <p class="muted">
+            BankNote is a decentralized smart contract on PulseChain. The UI provides convenience and estimates only.
+            Crypto assets are volatile and transactions are irreversible. <b>This is not financial advice.</b>
+            Always verify contract addresses and exercise caution.
+          </p>
+        </section>
+      </main>
+    </div>
   </div>
+
+  <script>
+    // Copy address
+    document.getElementById('copyBtn')?.addEventListener('click', async () => {
+      try{
+        const text = document.getElementById('addr').textContent.trim();
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById('copyBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(()=>btn.textContent = old, 1200);
+      }catch(e){ alert('Could not copy.'); }
+    });
+
+    // Add PulseChain helper
+    document.getElementById('addChainBtn')?.addEventListener('click', async () => {
+      if(!window.ethereum){ alert('No wallet found. Please install MetaMask or a compatible wallet.'); return; }
+      try{
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x171',
+            chainName: 'PulseChain',
+            rpcUrls: ['https://rpc.pulsechain.com'],
+            nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 },
+            blockExplorerUrls: ['https://otter.pulsechain.com/'],
+          }]
+        });
+      }catch(e){
+        console.error(e);
+        alert('Failed to add chain. Check wallet and try again.');
+      }
+    });
+
+    // Smooth anchor scrolling (nice on mobile)
+    document.querySelectorAll('a[href^="#"]').forEach(a=>{
+      a.addEventListener('click', e=>{
+        const id = a.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth', block:'start'}); }
+      });
+    });
+  </script>
 </body>
 </html>

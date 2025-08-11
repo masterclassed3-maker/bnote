@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import BankNoteABI from "./BankNoteABI.json";
 
-// Charts
+// charts
 import {
   ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -12,11 +12,10 @@ import {
   LineChart, Line,
 } from "recharts";
 
-/* ----------------- Chain & Contract ----------------- */
-const CONTRACT_ADDRESS = "0x05b78c242619d49792B51F1001F56694BA66d6e9";
-const PULSE_DEC = 369;
+// ---- Chain & Contract config ----
+const CONTRACT_ADDRESS = "0x473EB99177965277275B3e83bCE3d4884473878D"; // NEW
 const TARGET_CHAIN = {
-  chainId: "0x171", // 369 hex
+  chainId: "0x171", // PulseChain
   chainName: "PulseChain",
   rpcUrls: ["https://rpc.pulsechain.com"],
   nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
@@ -25,65 +24,45 @@ const TARGET_CHAIN = {
 
 const DECIMALS = 18;
 const ONE_DAY = 86400;
-const WC_PROJECT_ID = import.meta.env.VITE_WC_PROJECT_ID || "";
 
-/* ----------------- Helpers ----------------- */
-const clampInt = (v, min, max) => {
-  const n = Math.max(min, Math.min(max, Math.floor(Number(v || 0))));
-  return Number.isFinite(n) ? n : min;
-};
-const fmtShort = (n, d = 2) => {
-  if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
-  const num = typeof n === "string" ? Number(n) : n;
-  if (num >= 1e12) return (num / 1e12).toFixed(d) + "T";
-  if (num >= 1e9) return (num / 1e9).toFixed(d) + "B";
-  if (num >= 1e6) return (num / 1e6).toFixed(d) + "M";
-  if (num >= 1e3) return (num / 1e3).toFixed(d) + "k";
-  return num.toFixed(d);
-};
-const pctText = (n) => (n === null || n === undefined ? "—" : `${Number(n).toFixed(2)}%`);
-const pctColor = (n) => (n == null ? "inherit" : Number(n) >= 0 ? "#9EE493" : "#FF8DA1");
-const fmtUnits = (bn) => ethers.utils.formatUnits(bn || "0", DECIMALS);
-
-/* ===================================================== */
 export default function App() {
-  /* Wallet / provider */
+  // Wallet / provider
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [addr, setAddr] = useState(null);
 
-  /* Contract */
+  // Contract
   const [contract, setContract] = useState(null);
 
-  /* Token basics */
+  // Token basics
   const [symbol, setSymbol] = useState("bNote");
   const [balance, setBalance] = useState("0");
   const [totalSupply, setTotalSupply] = useState("0");
   const [initialSupply, setInitialSupply] = useState("0");
 
-  /* Limits */
+  // Limits (for form validation)
   const [minDays, setMinDays] = useState(1);
-  const [maxDays, setMaxDays] = useState(3690);
+  const [maxDays, setMaxDays] = useState(5555);
 
-  /* Staking / share rate */
-  const [aprBasis, setAprBasis] = useState(0); // e.g. 414 -> 4.14%
+  // Staking bits
+  const [aprBasis, setAprBasis] = useState(0); // e.g. 369 => 3.69%
   const aprPercent = useMemo(() => (aprBasis / 100).toFixed(2), [aprBasis]);
   const [shareRate, setShareRate] = useState("1");
   const [totalShares, setTotalShares] = useState("0");
-  const [earlyBasis, setEarlyBasis] = useState(25);
-  const [lateBasis, setLateBasis] = useState(25);
+  const [earlyBasis, setEarlyBasis] = useState(2500 / 100); // show as % (25)
+  const [lateBasis, setLateBasis] = useState(2500 / 100);  // show as % (25)
 
-  /* Stakes */
+  // Your stakes
   const [stakes, setStakes] = useState([]);
   const [walletShares, setWalletShares] = useState("0");
   const [nowTs, setNowTs] = useState(() => Math.floor(Date.now() / 1000));
 
-  /* Forms */
+  // Stake/Unstake forms
   const [stakeAmt, setStakeAmt] = useState("");
   const [stakeDays, setStakeDays] = useState("");
   const [unstakeIdx, setUnstakeIdx] = useState("");
 
-  /* Prices / analytics */
+  // Price / analytics
   const [priceUsd, setPriceUsd] = useState(null);
   const [priceNative, setPriceNative] = useState(null);
   const [liquidityUsd, setLiquidityUsd] = useState(null);
@@ -95,118 +74,81 @@ export default function App() {
   const [txSells24, setTxSells24] = useState(null);
   const [pairAddress, setPairAddress] = useState(null);
 
-  // session trend for ratio
+  // local session trends
+  const [sharesHistory, setSharesHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("bnote_shares_hist") || "[]"); } catch { return []; }
+  });
   const [ratioHistory, setRatioHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem("bnote_ratio_hist") || "[]"); } catch { return []; }
   });
 
-  /* Derived */
   const walletValueUsd = useMemo(
-    () => (priceUsd ? Number(fmtUnits(balance)) * priceUsd : null),
+    () => (priceUsd ? Number(ethers.utils.formatUnits(balance, DECIMALS)) * priceUsd : null),
     [balance, priceUsd]
   );
   const walletValuePls = useMemo(
-    () => (priceNative ? Number(fmtUnits(balance)) * priceNative : null),
+    () => (priceNative ? Number(ethers.utils.formatUnits(balance, DECIMALS)) * priceNative : null),
     [balance, priceNative]
   );
   const marketCapUsd = useMemo(() => {
     if (!priceUsd) return null;
-    const circ = Number(fmtUnits(totalSupply || "0"));
+    const circ = Number(ethers.utils.formatUnits(totalSupply || "0", DECIMALS));
     return circ * priceUsd;
   }, [priceUsd, totalSupply]);
 
   const stakedAmount = useMemo(() => {
-    const init = Number(fmtUnits(initialSupply || "0"));
-    const circ = Number(fmtUnits(totalSupply || "0"));
+    const init = Number(ethers.utils.formatUnits(initialSupply || "0", DECIMALS));
+    const circ = Number(ethers.utils.formatUnits(totalSupply || "0", DECIMALS));
     return Math.max(0, init - circ);
   }, [initialSupply, totalSupply]);
   const stakedPct = useMemo(() => {
-    const init = Number(fmtUnits(initialSupply || "0"));
+    const init = Number(ethers.utils.formatUnits(initialSupply || "0", DECIMALS));
     if (!init) return 0;
     return (stakedAmount / init) * 100;
   }, [stakedAmount, initialSupply]);
 
-  /* ----------------- Connectors ----------------- */
-  const ensureTargetChain = async (_prov) => {
-    const cid = await _prov.request({ method: "eth_chainId" });
-    if (cid?.toLowerCase() === TARGET_CHAIN.chainId.toLowerCase()) return;
-    try {
-      await _prov.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: TARGET_CHAIN.chainId }],
-      });
-    } catch (err) {
-      if (err?.code === 4902) {
-        await _prov.request({ method: "wallet_addEthereumChain", params: [TARGET_CHAIN] });
-      } else throw err;
-    }
-  };
-
-  const connectMetaMask = async () => {
+  // Connect wallet
+  const connect = async () => {
     if (!window.ethereum) {
       alert("No wallet found. Install MetaMask (or a compatible wallet) and try again.");
       return;
     }
     try {
-      await ensureTargetChain(window.ethereum);
-      const _provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      await _provider.send("eth_requestAccounts", []);
+      const curr = await window.ethereum.request({ method: "eth_chainId" });
+      if (curr.toLowerCase() !== TARGET_CHAIN.chainId.toLowerCase()) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: TARGET_CHAIN.chainId }],
+          });
+        } catch (switchErr) {
+          if (switchErr.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [TARGET_CHAIN],
+            });
+          } else {
+            throw switchErr;
+          }
+        }
+      }
+      const _provider = new ethers.providers.Web3Provider(window.ethereum);
       const _signer = _provider.getSigner();
       const _addr = await _signer.getAddress();
-      setProvider(_provider); setSigner(_signer); setAddr(_addr);
+
+      setProvider(_provider);
+      setSigner(_signer);
+      setAddr(_addr);
+
       const c = new ethers.Contract(CONTRACT_ADDRESS, BankNoteABI, _signer);
       setContract(c);
-
-      // events
-      window.ethereum.on?.("accountsChanged", (a) => { if (a?.[0]) setAddr(a[0]); });
-      window.ethereum.on?.("chainChanged", () => window.location.reload());
-    } catch (e) {
-      console.error(e); alert(e?.message || "Failed to connect");
-    }
-  };
-
-  const connectWalletConnect = async () => {
-    try {
-      const { default: EthereumProvider } = await import("@walletconnect/ethereum-provider");
-      const wc = await EthereumProvider.init({
-        projectId: WC_PROJECT_ID || "demo",
-        chains: [PULSE_DEC],
-        showQrModal: true,
-        methods: [
-          "eth_sendTransaction",
-          "personal_sign",
-          "eth_signTypedData",
-          "wallet_switchEthereumChain",
-          "wallet_addEthereumChain",
-        ],
-        rpcMap: { [PULSE_DEC]: "https://rpc.pulsechain.com" },
-      });
-
-      await wc.enable();
-      try {
-        await wc.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: TARGET_CHAIN.chainId }],
-        });
-      } catch {}
-
-      const _provider = new ethers.providers.Web3Provider(wc, "any");
-      const _signer = _provider.getSigner();
-      const _addr = await _signer.getAddress();
-      setProvider(_provider); setSigner(_signer); setAddr(_addr);
-      const c = new ethers.Contract(CONTRACT_ADDRESS, BankNoteABI, _signer);
-      setContract(c);
-
-      wc.on("accountsChanged", (a) => { if (a?.[0]) setAddr(a[0]); });
-      wc.on("chainChanged", () => window.location.reload());
-      wc.on("disconnect", () => { setProvider(null); setSigner(null); setAddr(null); setContract(null); });
     } catch (e) {
       console.error(e);
-      alert(e?.message || "WalletConnect failed");
+      alert("Failed to connect. See console for details.");
     }
   };
 
-  /* ----------------- Reads ----------------- */
+  // Basic reads
   const loadBasics = async () => {
     if (!contract) return;
     try {
@@ -219,8 +161,8 @@ export default function App() {
         _min,
         _max,
         bal,
-        epen,
-        lpen,
+        // Early/late penalty constants aren’t always exposed as methods in all versions,
+        // so we keep displaying 25% if calls fail.
       ] = await Promise.all([
         contract.symbol(),
         contract.totalSupply(),
@@ -230,8 +172,6 @@ export default function App() {
         contract.MIN_STAKE_DAYS ? contract.MIN_STAKE_DAYS() : Promise.resolve(minDays),
         contract.MAX_STAKE_DAYS ? contract.MAX_STAKE_DAYS() : Promise.resolve(maxDays),
         addr ? contract.balanceOf(addr) : Promise.resolve("0"),
-        contract.EARLY_PENALTY_BASIS ? contract.EARLY_PENALTY_BASIS() : Promise.resolve(earlyBasis),
-        contract.LATE_PENALTY_BASIS ? contract.LATE_PENALTY_BASIS() : Promise.resolve(lateBasis),
       ]);
 
       setSymbol(_symbol);
@@ -243,13 +183,12 @@ export default function App() {
       setBalance(bal.toString());
       if (_min) setMinDays(Number(_min));
       if (_max) setMaxDays(Number(_max));
-      if (epen) setEarlyBasis(Number(epen));
-      if (lpen) setLateBasis(Number(lpen));
     } catch (e) {
       console.error("loadBasics error:", e);
     }
   };
 
+  // Your stakes + sum shares
   const loadStakes = async () => {
     if (!contract || !addr) return;
     try {
@@ -260,10 +199,11 @@ export default function App() {
         lockDays: Number(s.lockDays),
         amount: s.amount.toString(),
         shares: s.shares.toString(),
-        rewardDebt: s.rewardDebt?.toString?.() ?? "0",
+        rewardDebt: s.rewardDebt ? s.rewardDebt.toString() : "0",
         autoRenew: s.autoRenew,
       }));
       setStakes(normalized);
+
       const sumShares = normalized.reduce(
         (acc, s) => acc.add(ethers.BigNumber.from(s.shares)),
         ethers.BigNumber.from(0)
@@ -274,6 +214,7 @@ export default function App() {
     }
   };
 
+  // Price fetch (Dexscreener)
   const fetchPrices = async () => {
     try {
       const url = `https://api.dexscreener.com/latest/dex/tokens/${CONTRACT_ADDRESS}`;
@@ -289,6 +230,7 @@ export default function App() {
       const top = pairs[0];
 
       setPairAddress(top.pairAddress || null);
+
       const pUsd = top.priceUsd ? Number(top.priceUsd) : null;
       const pNat = top.priceNative ? Number(top.priceNative) : null;
       setPriceUsd(pUsd);
@@ -312,7 +254,7 @@ export default function App() {
     }
   };
 
-  /* ----------------- Effects ----------------- */
+  // Timers / refresh
   useEffect(() => {
     const id = setInterval(() => setNowTs(Math.floor(Date.now() / 1000)), 30_000);
     return () => clearInterval(id);
@@ -326,7 +268,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract, addr]);
 
-  // ratio trend
+  // session trend: totalShares -> localStorage
+  useEffect(() => {
+    if (!totalShares) return;
+    const point = {
+      t: Date.now(),
+      v: Number(ethers.utils.formatUnits(totalShares || "0", DECIMALS)),
+    };
+    const next = [...sharesHistory, point].slice(-200);
+    setSharesHistory(next);
+    localStorage.setItem("bnote_shares_hist", JSON.stringify(next));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalShares]);
+
+  // session trend: priceNative ratio
   useEffect(() => {
     if (priceNative == null) return;
     const point = { t: Date.now(), v: priceNative };
@@ -336,14 +291,28 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceNative]);
 
-  /* ----------------- CSV ----------------- */
+  // Helpers
+  const fmt = (n, d = 2) => {
+    if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+    const num = typeof n === "string" ? Number(n) : n;
+    if (num >= 1e9) return (num / 1e9).toFixed(d) + "B";
+    if (num >= 1e6) return (num / 1e6).toFixed(d) + "M";
+    if (num >= 1e3) return (num / 1e3).toFixed(d) + "k";
+    return num.toFixed(d);
+  };
+  const pct = (n) => (n === null || n === undefined ? "—" : `${Number(n).toFixed(2)}%`);
+  const pctColor = (n) =>
+    n === null || n === undefined ? "inherit" : Number(n) >= 0 ? "#9EE493" : "#FF8DA1";
+  const fmtUnits = (bn) => ethers.utils.formatUnits(bn || "0", DECIMALS);
+
+  // CSV helpers
   const buildCSV = () => {
     const headers = [
       "index","amount_bNote","locked_days","start_timestamp","start_iso",
       "unlock_timestamp","unlock_iso","status","days_remaining","est_penalty_percent",
     ];
     const rows = stakes.map((s) => {
-      const amount = Number(fmtUnits(s.amount));
+      const amount = ethers.utils.formatUnits(s.amount, DECIMALS);
       const startTs = s.startTimestamp;
       const unlockTs = s.startTimestamp + s.lockDays * ONE_DAY;
       const daysStaked = Math.floor((nowTs - s.startTimestamp) / ONE_DAY);
@@ -353,8 +322,10 @@ export default function App() {
       else if (dLeft === 0) status = "unlock_today";
       else status = "late";
       let estPct = 0;
-      if (dLeft > 0) estPct = earlyBasis * (dLeft / s.lockDays);
-      else if (dLeft < 0) estPct = Math.min(lateBasis * ((-dLeft) / s.lockDays), lateBasis);
+      const earlyMax = 25;
+      const lateMax = 25;
+      if (dLeft > 0) estPct = earlyMax * (dLeft / s.lockDays);
+      else if (dLeft < 0) estPct = Math.min(lateMax * ((-dLeft) / s.lockDays), lateMax);
       return [
         s._idx,
         amount,
@@ -368,6 +339,7 @@ export default function App() {
         estPct.toFixed(2),
       ];
     });
+
     const csv =
       headers.join(",") + "\n" +
       rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -399,11 +371,11 @@ export default function App() {
     }
   };
 
-  /* ----------------- Writes ----------------- */
+  // ---- Write: Stake & Unstake ----
   const startStake = async () => {
     if (!contract || !signer || !addr) return alert("Connect your wallet first.");
     const amount = Number(stakeAmt);
-    const days = clampInt(stakeDays, minDays, maxDays);
+    const days = Number(stakeDays);
 
     if (!amount || amount <= 0) return alert("Enter an amount > 0");
     if (!Number.isInteger(days)) return alert("Days must be an integer.");
@@ -434,16 +406,17 @@ export default function App() {
       const daysStaked = Math.floor((nowTs - s.startTimestamp) / ONE_DAY);
       const dLeft = s.lockDays - Math.max(0, daysStaked);
       if (dLeft > 0) {
-        const estEarly = (earlyBasis * (dLeft / s.lockDays)).toFixed(2);
+        const estEarly = (25 * (dLeft / s.lockDays)).toFixed(2);
         confirmMsg = `Early by ${dLeft} day(s). Estimated penalty ~${estEarly}% of principal.\n\nProceed?`;
       } else if (dLeft < 0) {
         const lateDays = -dLeft;
-        const estLate = Math.min(lateBasis * (lateDays / s.lockDays), lateBasis).toFixed(2);
+        const estLate = Math.min(25 * (lateDays / s.lockDays), 25).toFixed(2);
         confirmMsg = `Late by ${lateDays} day(s). Estimated penalty ~${estLate}% (grows with lateness).\n\nProceed?`;
       } else {
         confirmMsg = "It's the unlock day. No late penalty expected. End stake?";
       }
     }
+
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -458,16 +431,18 @@ export default function App() {
     }
   };
 
-  /* ----------------- Derived Analytics Data ----------------- */
+  // ---------- Derived data for Analytics ----------
+  // Donut: locked vs circulating
   const donutData = useMemo(() => {
     const locked = stakedAmount;
-    const circulating = Number(fmtUnits(totalSupply || "0"));
+    const circulating = Number(ethers.utils.formatUnits(totalSupply || "0", DECIMALS));
     return [
       { name: "Locked", value: locked },
       { name: "Circulating", value: circulating },
     ];
   }, [stakedAmount, totalSupply]);
 
+  // Ladder: stacked bar with transparent offset
   const ladderData = useMemo(() => {
     if (!stakes.length) return [];
     const startDays = stakes.map(s => Math.floor(s.startTimestamp / ONE_DAY));
@@ -482,6 +457,7 @@ export default function App() {
     });
   }, [stakes]);
 
+  // Buckets
   const buckets = useMemo(() => ([
     { label: "1–7", min: 1, max: 7 },
     { label: "8–30", min: 8, max: 30 },
@@ -492,7 +468,7 @@ export default function App() {
   const bucketData = useMemo(() => {
     const arr = buckets.map(b => ({ bucket: b.label, amount: 0, count: 0 }));
     for (const s of stakes) {
-      const amt = Number(fmtUnits(s.amount));
+      const amt = Number(ethers.utils.formatUnits(s.amount, DECIMALS));
       const b = buckets.find(b => s.lockDays >= b.min && s.lockDays <= b.max);
       const i = buckets.indexOf(b);
       if (i >= 0) { arr[i].amount += amt; arr[i].count += 1; }
@@ -500,13 +476,14 @@ export default function App() {
     return arr;
   }, [stakes, buckets]);
 
+  // Unlocks next 90 days
   const unlocksData = useMemo(() => {
     const todayDay = Math.floor(nowTs / ONE_DAY);
     const map = new Map();
     for (const s of stakes) {
       const unlockDay = Math.floor((s.startTimestamp + s.lockDays * ONE_DAY) / ONE_DAY);
       if (unlockDay >= todayDay && unlockDay <= todayDay + 90) {
-        const amt = Number(fmtUnits(s.amount));
+        const amt = Number(ethers.utils.formatUnits(s.amount, DECIMALS));
         map.set(unlockDay, (map.get(unlockDay) || 0) + amt);
       }
     }
@@ -521,6 +498,7 @@ export default function App() {
     return arr;
   }, [stakes, nowTs]);
 
+  // Penalty curve preview
   const [selIdx, setSelIdx] = useState(null);
   const penaltyData = useMemo(() => {
     let L = 30;
@@ -528,79 +506,85 @@ export default function App() {
     const data = [];
     for (let d = -L; d <= L; d++) {
       let p = 0;
-      if (d < 0) { p = earlyBasis * ((-d) / L); if (p > earlyBasis) p = earlyBasis; }
-      else if (d > 0) { p = lateBasis * (d / L); if (p > lateBasis) p = lateBasis; }
+      if (d < 0) { // early
+        p = 25 * ((-d) / L);
+        if (p > 25) p = 25;
+      } else if (d > 0) { // late
+        p = 25 * (d / L);
+        if (p > 25) p = 25;
+      }
       data.push({ d, penalty: Number(p.toFixed(2)) });
     }
     return data;
-  }, [selIdx, stakes, earlyBasis, lateBasis]);
+  }, [selIdx, stakes]);
 
+  // Trends (local session)
   const ratioTrendData = useMemo(
     () => ratioHistory.map(p => ({ time: new Date(p.t).toLocaleTimeString(), ratio: p.v })),
     [ratioHistory]
   );
 
-  /* ----------------- UI ----------------- */
+  // ---------------- UI ----------------
+  const connectBtn = (
+    <button onClick={connect} style={connectStyle}>
+      {addr ? "Reconnect" : "Connect Wallet"}
+    </button>
+  );
+
   return (
     <div style={pageStyle}>
       <div style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src="/logo.jpg" alt="bNote" style={{ width: 28, height: 28, borderRadius: 6, objectFit: "cover" }} />
+          <div style={logoDot} />
           <div>
             <div style={{ fontWeight: 800, letterSpacing: 0.5 }}>BankNote dApp</div>
             <div style={{ fontSize: 12, opacity: 0.8 }}>PulseChain • {symbol}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <a href="/docs.html" style={docsBtn} target="_self" rel="noopener">Docs</a>
-          <button onClick={connectMetaMask} style={connectStyle}>{addr ? "Reconnect (MetaMask)" : "Connect MetaMask"}</button>
-          <button onClick={connectWalletConnect} style={connectStyle}>WalletConnect</button>
+          <button
+            onClick={() => window.open("/docs.html", "_blank")}
+            style={smallBtn}
+            title="Open docs"
+          >
+            Docs
+          </button>
+          {connectBtn}
         </div>
       </div>
 
       {/* KPIs */}
       <div style={kpiGrid}>
-        <AnalyticsCard label="Price (USD)" value={priceUsd ? `$${fmtShort(priceUsd, 6)}` : "—"} sub={liquidityUsd ? `Liquidity $${fmtShort(liquidityUsd)}` : ""} />
-        <AnalyticsCard label="Price (PLS)" value={priceNative ? `${fmtShort(priceNative, 6)} PLS` : "—"} sub={fdvUsd ? `FDV $${fmtShort(fdvUsd)}` : ""} />
-        <AnalyticsCard label="Wallet Value" value={walletValueUsd !== null ? `$${fmtShort(walletValueUsd)}` : "—"} sub={walletValuePls !== null ? `${fmtShort(walletValuePls)} PLS` : ""} />
-        <AnalyticsCard label="Market Cap (est.)" value={marketCapUsd !== null ? `$${fmtShort(marketCapUsd)}` : "—"} sub={`Circ: ${fmtShort(Number(fmtUnits(totalSupply || "0")))} ${symbol}`} />
-        <AnalyticsCard label="Staked (burned)" value={`${fmtShort(stakedAmount)} ${symbol}`} sub={`${stakedPct.toFixed(2)}% of initial`} />
+        <AnalyticsCard label="Price (USD)" value={priceUsd ? `$${fmt(priceUsd, 6)}` : "—"} sub={liquidityUsd ? `Liquidity $${fmt(liquidityUsd)}` : ""} />
+        <AnalyticsCard label="Price (PLS)" value={priceNative ? `${fmt(priceNative, 6)} PLS` : "—"} sub={fdvUsd ? `FDV $${fmt(fdvUsd)}` : ""} />
+        <AnalyticsCard label="Wallet Value" value={walletValueUsd !== null ? `$${fmt(walletValueUsd)}` : "—"} sub={walletValuePls !== null ? `${fmt(walletValuePls)} PLS` : ""} />
+        <AnalyticsCard label="Market Cap (est.)" value={marketCapUsd !== null ? `$${fmt(marketCapUsd)}` : "—"} sub={`Circ: ${fmt(Number(fmtUnits(totalSupply || "0")))} ${symbol}`} />
+        <AnalyticsCard label="Staked (burned)" value={`${fmt(stakedAmount)} ${symbol}`} sub={`${stakedPct.toFixed(2)}% of initial`} />
         <AnalyticsCard label="APR" value={`${aprPercent}%`} sub={`Share Rate: ${Number(shareRate).toFixed(4)}`} />
       </div>
 
-      {/* Wallet */}
+      {/* Wallet Panel */}
       <div style={sectionStyle}>
         <div style={sectionHead}>Wallet</div>
         <Row label="Account" value={<span style={mono}>{addr ?? "—"}</span>} />
-        <Row label="Balance" value={<span style={mono}>{fmtShort(Number(fmtUnits(balance || "0")))} {symbol}</span>} />
-        <Row label="Total Shares (Wallet)" value={<span style={mono}>{fmtShort(Number(fmtUnits(walletShares || "0")))}</span>} />
-        <Row label="Total Shares (Contract)" value={<span style={mono}>{fmtShort(Number(fmtUnits(totalShares || "0")))}</span>} />
+        <Row label="Balance" value={<span style={mono}>{fmt(Number(fmtUnits(balance || "0")))} {symbol}</span>} />
+        <Row label="Total Shares (Wallet)" value={<span style={mono}>{fmt(Number(fmtUnits(walletShares || "0")))}</span>} />
+        <Row label="Total Shares (Contract)" value={<span style={mono}>{fmt(Number(fmtUnits(totalShares || "0")))}</span>} />
       </div>
 
-      {/* Actions */}
+      {/* Stake / Unstake */}
       <div style={sectionStyle}>
         <div style={sectionHead}>Actions</div>
 
         <div style={{ ...cardStyle, marginBottom: 12 }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Start a Stake</div>
-          <div style={twoCol}>
-            <LabeledInput
-              label={`Amount (${symbol})`}
-              value={stakeAmt}
-              setValue={(v) => setStakeAmt(v.replace(/[^\d.]/g, ""))}
-              placeholder="e.g. 1000"
-            />
-            <LabeledInput
-              label={`Days locked (min ${minDays}, max ${maxDays})`}
-              value={stakeDays}
-              setValue={(v) => setStakeDays(v.replace(/[^\d]/g, ""))}
-              placeholder={`${minDays}`}
-              numeric
-            />
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <LabeledInput label={`Amount (${symbol})`} value={stakeAmt} setValue={setStakeAmt} placeholder="e.g. 1000" />
+            <LabeledInput label={`Days locked (min ${minDays}, max ${maxDays})`} value={stakeDays} setValue={setStakeDays} placeholder={`${minDays}`} numeric />
           </div>
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85 }}>
-            <strong>Note:</strong> Ending early applies a penalty that scales with remaining days (up to {earlyBasis}%).
-            Ending late can also incur a growing penalty (up to {lateBasis}%). Ending on the unlock day has no late penalty.
+            <strong>Note:</strong> Ending early applies a penalty that scales with remaining days (up to 25%).
+            Ending late can also incur a growing penalty (up to 25%). Ending on the unlock day has no late penalty.
           </div>
           <div style={{ marginTop: 12 }}>
             <button onClick={startStake} style={primaryBtn}>Stake</button>
@@ -609,14 +593,8 @@ export default function App() {
 
         <div style={{ ...cardStyle }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>End a Stake</div>
-          <div style={twoCol}>
-            <LabeledInput
-              label="End by index…"
-              value={unstakeIdx}
-              setValue={(v) => setUnstakeIdx(v.replace(/[^\d]/g, ""))}
-              placeholder="e.g. 0"
-              numeric
-            />
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <LabeledInput label="End by index…" value={unstakeIdx} setValue={setUnstakeIdx} placeholder="e.g. 0" numeric />
           </div>
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85 }}>Tip: You can also end directly from the table below.</div>
           <div style={{ marginTop: 12 }}>
@@ -625,7 +603,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Your Stakes (centered & ellipsized) */}
+      {/* Stakes Panel — CENTERED & ALIGNED */}
       <div style={sectionStyle}>
         <div style={sectionHead}>
           Your Stakes
@@ -636,61 +614,80 @@ export default function App() {
           </div>
         </div>
 
-        {stakes.length === 0 ? (
-          <div style={{ opacity: 0.8, textAlign: "center" }}>No stakes yet.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={table}>
-              <thead>
-                <tr>
-                  <th style={thNarrow}>#</th>
-                  <th style={thWide}>Amount</th>
-                  <th style={thWide}>Shares</th>
-                  <th style={thNarrow}>Lock (days)</th>
-                  <th style={thWide}>Start</th>
-                  <th style={thWide}>Unlock</th>
-                  <th style={thNarrow}>Status</th>
-                  <th style={thNarrow}>Days Left</th>
-                  <th style={thNarrow}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {stakes.map((s) => {
-                  const amount = Number(fmtUnits(s.amount));
-                  const sharesHuman = Number(fmtUnits(s.shares));
-                  const start = new Date(s.startTimestamp * 1000);
-                  const unlockTs = s.startTimestamp + s.lockDays * ONE_DAY;
-                  const unlock = new Date(unlockTs * 1000);
-                  const daysStaked = Math.floor((nowTs - s.startTimestamp) / ONE_DAY);
-                  const dLeft = s.lockDays - Math.max(0, daysStaked);
-                  const status = dLeft > 0 ? "Early" : dLeft === 0 ? "Unlock today" : "Late";
-                  return (
-                    <tr key={s._idx}>
-                      <td style={tdCtr}>{s._idx}</td>
-                      <td style={tdEllip} title={amount.toString()}>{fmtShort(amount)}</td>
-                      <td style={tdEllip} title={sharesHuman.toString()}>{fmtShort(sharesHuman)}</td>
-                      <td style={tdCtr}>{s.lockDays}</td>
-                      <td style={tdEllip} title={start.toISOString()}>{start.toLocaleDateString()}</td>
-                      <td style={tdEllip} title={unlock.toISOString()}>{unlock.toLocaleDateString()}</td>
-                      <td style={tdCtr}>{status}</td>
-                      <td style={tdCtr}>{dLeft}</td>
-                      <td style={tdCtr}><button onClick={() => endStake(s._idx)} style={tinyDanger}>End</button></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div style={centerWrap}>
+          {stakes.length === 0 ? (
+            <div style={{ opacity: 0.8, textAlign: "center" }}>No stakes yet.</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={tableCentered}>
+                <colgroup>
+                  <col style={{ width: 70 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 160 }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 150 }} />
+                  <col style={{ width: 150 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 110 }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={thCenter}>#</th>
+                    <th style={thCenter}>Amount</th>
+                    <th style={thCenter}>Shares</th>
+                    <th style={thCenter}>Lock (days)</th>
+                    <th style={thCenter}>Start</th>
+                    <th style={thCenter}>Unlock</th>
+                    <th style={thCenter}>Status</th>
+                    <th style={thCenter}>Days Left</th>
+                    <th style={thCenter}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stakes.map((s) => {
+                    const amount = Number(fmtUnits(s.amount));
+                    const sharesHuman = Number(fmtUnits(s.shares));
+                    const start = new Date(s.startTimestamp * 1000);
+                    const unlockTs = s.startTimestamp + s.lockDays * ONE_DAY;
+                    const unlock = new Date(unlockTs * 1000);
+                    const daysStaked = Math.floor((nowTs - s.startTimestamp) / ONE_DAY);
+                    const dLeft = s.lockDays - Math.max(0, daysStaked);
+                    const status = dLeft > 0 ? "Early" : dLeft === 0 ? "Unlock today" : "Late";
+                    return (
+                      <tr key={s._idx}>
+                        <td style={tdCenter}>{s._idx}</td>
+                        <td style={tdCenter}>{fmt(amount)}</td>
+                        <td style={tdCenter}>
+                          <span style={nowrapMono}>{fmt(sharesHuman)}</span>
+                        </td>
+                        <td style={tdCenter}>{s.lockDays}</td>
+                        <td style={tdCenter} title={start.toISOString()}>{start.toLocaleDateString()}</td>
+                        <td style={tdCenter} title={unlock.toISOString()}>{unlock.toLocaleDateString()}</td>
+                        <td style={tdCenter}>{status}</td>
+                        <td style={tdCenter}>{dLeft}</td>
+                        <td style={tdCenter}>
+                          <button onClick={() => endStake(s._idx)} style={tinyDanger}>End</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
-        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85 }}>
-          <strong>Penalty rules:</strong> Early = before the full lock period elapses (penalty scales up to {earlyBasis}% at start).
-          Late = any time after the unlock day; penalty grows the longer you wait (up to {lateBasis}%).
-          Ending on the unlock day has no late penalty. <a href="/docs.html" style={{ color: "#8ff" }}>Learn more in Docs</a>.
+        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85, textAlign: "center" }}>
+          <strong>Penalty rules:</strong> Early = before the full lock period elapses (penalty scales up to 25% at start).
+          Late = any time after the unlock day; penalty grows the longer you wait (up to 25%).
+          Ending on the unlock day has no late penalty.
+          <br />
+          <em>Note:</em> “Days left” and estimates shown here are client-side guidance only; on-chain results depend on exact block timestamps.
         </div>
       </div>
 
-      {/* Analytics */}
+      {/* ----------- Analytics Section ----------- */}
       <div style={sectionStyle}>
         <div style={sectionHead}>Analytics</div>
 
@@ -714,7 +711,13 @@ export default function App() {
             <div style={chartTitle}>Locked vs Circulating</div>
             <ResponsiveContainer width="100%" height="85%">
               <PieChart>
-                <Pie data={donutData} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%">
+                <Pie
+                  data={donutData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius="55%"
+                  outerRadius="80%"
+                >
                   <Cell fill="#7ee0ff" />
                   <Cell fill="#8c7eff" />
                 </Pie>
@@ -730,7 +733,7 @@ export default function App() {
           <div style={chartCard}>
             <div style={chartTitle}>Staking Ladder (timeline)</div>
             <ResponsiveContainer width="100%" height="85%">
-              <BarChart data={ladderData} stackOffset="expand" margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+              <BarChart data={ladderData} stackOffset="expand" margin={{ left: 20, right: 20, top: 10, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis dataKey="name" />
                 <YAxis hide />
@@ -745,7 +748,7 @@ export default function App() {
           <div style={chartCard}>
             <div style={chartTitle}>Maturity Buckets (amount)</div>
             <ResponsiveContainer width="100%" height="85%">
-              <BarChart data={bucketData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+              <BarChart data={bucketData} margin={{ left: 20, right: 20, top: 10, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis dataKey="bucket" />
                 <YAxis />
@@ -761,7 +764,7 @@ export default function App() {
           <div style={chartCard}>
             <div style={chartTitle}>Unlocks (next 90 days)</div>
             <ResponsiveContainer width="100%" height="85%">
-              <AreaChart data={unlocksData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+              <AreaChart data={unlocksData} margin={{ left: 20, right: 20, top: 10, bottom: 20 }}>
                 <defs>
                   <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#7ee0ff" stopOpacity={0.9} />
@@ -781,7 +784,7 @@ export default function App() {
             <div style={chartTitle}>
               Penalty Curve Preview{" "}
               <span style={{ fontWeight: 400, opacity: 0.8 }}>
-                (stake:&nbsp;
+                (select stake index:&nbsp;
                 <select
                   value={selIdx ?? ""}
                   onChange={(e) => setSelIdx(e.target.value === "" ? null : Number(e.target.value))}
@@ -794,9 +797,9 @@ export default function App() {
               </span>
             </div>
             <ResponsiveContainer width="100%" height="80%">
-              <LineChart data={penaltyData} margin={{ top: 10, right: 20, bottom: 10, left: 30 }}>
+              <LineChart data={penaltyData} margin={{ left: 20, right: 20, top: 10, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                <XAxis dataKey="d" tickFormatter={(t) => `${t}`} />
+                <XAxis dataKey="d" tickFormatter={(t) => `${t}`} label={{ value: "Days from unlock (– early / + late)", position: "insideBottom", offset: -5, fill: "#9fb3d9" }} />
                 <YAxis tickFormatter={(v) => `${v}%`} />
                 <RTooltip formatter={(v) => [`${v}%`, "Penalty"]} />
                 <ReferenceLine x={0} stroke="#aaa" />
@@ -806,12 +809,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* Row D: ratio trend */}
+        {/* Row D: session trend (ratio only, per your earlier request) */}
         <div style={analyticsGrid}>
           <div style={chartCard}>
             <div style={chartTitle}>bNote / PLS ratio (session)</div>
             <ResponsiveContainer width="100%" height="85%">
-              <LineChart data={ratioTrendData} margin={{ top: 10, right: 20, bottom: 10, left: 30 }}>
+              <LineChart data={ratioTrendData} margin={{ left: 20, right: 20, top: 10, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis dataKey="time" />
                 <YAxis />
@@ -825,8 +828,7 @@ export default function App() {
 
       <div style={{ opacity: 0.6, fontSize: 12, margin: "30px 0" }}>
         Prices & volumes from Dexscreener (top-liquidity pair on PulseChain). Market cap is an estimate.
-        &nbsp;Contract: {CONTRACT_ADDRESS}
-        &nbsp;• <a href="/docs.html" style={{ color: "#8ff" }}>Docs</a>
+        bNote contract address: {CONTRACT_ADDRESS}.
       </div>
     </div>
   );
@@ -880,9 +882,14 @@ const headerStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 8,
   marginBottom: 18,
-  flexWrap: "wrap",
+};
+const logoDot = {
+  width: 14,
+  height: 14,
+  borderRadius: 999,
+  background: "linear-gradient(135deg, #88f, #8ff)",
+  boxShadow: "0 0 18px rgba(136,136,255,0.6)",
 };
 const connectStyle = {
   background: "linear-gradient(135deg, rgba(136,136,255,0.25), rgba(136,255,255,0.25))",
@@ -891,15 +898,6 @@ const connectStyle = {
   borderRadius: 12,
   color: "#E8F1FF",
   cursor: "pointer",
-  whiteSpace: "nowrap",
-};
-const docsBtn = {
-  background: "rgba(132,234,255,0.12)",
-  color: "#8ff",
-  border: "1px solid rgba(132,234,255,0.3)",
-  borderRadius: 10,
-  padding: "8px 12px",
-  textDecoration: "none",
 };
 const kpiGrid = {
   display: "grid",
@@ -929,7 +927,6 @@ const sectionHead = {
   fontWeight: 700,
   marginBottom: 10,
   gap: 10,
-  flexWrap: "wrap",
 };
 const row = {
   display: "flex",
@@ -949,11 +946,6 @@ const smallBtn = {
   borderRadius: 10,
   padding: "6px 10px",
   cursor: "pointer",
-};
-const twoCol = {
-  display: "grid",
-  gap: 10,
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
 };
 const input = {
   width: "100%",
@@ -991,33 +983,38 @@ const tinyDanger = {
   cursor: "pointer",
   fontSize: 12,
 };
-const table = {
+
+const centerWrap = {
+  maxWidth: 1100,
+  margin: "0 auto",
+  width: "100%",
+};
+
+const tableCentered = {
   width: "100%",
   borderCollapse: "collapse",
-  tableLayout: "fixed",
+  margin: "0 auto",
 };
-const thBase = {
+
+const thCenter = {
   textAlign: "center",
   padding: "10px 8px",
-  borderBottom: "1px solid rgba(132,234,255,0.25)",
+  borderBottom: "1px solid rgba(132,234,255,0.15)",
   fontWeight: 700,
-  whiteSpace: "nowrap",
 };
-const tdBase = {
+
+const tdCenter = {
   textAlign: "center",
   padding: "10px 8px",
   borderBottom: "1px dashed rgba(132,234,255,0.12)",
   verticalAlign: "middle",
 };
-const thNarrow = { ...thBase, width: 90 };
-const thWide = { ...thBase, width: 160 };
-const tdCtr = { ...tdBase };
-const tdEllip = {
-  ...tdBase,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
+
+const nowrapMono = {
+  ...mono,
   whiteSpace: "nowrap",
 };
+
 const analyticsGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
