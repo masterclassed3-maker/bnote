@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add bNote to MetaMask</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+      background: #f9f9f9;
+    }
+    .token-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      display: inline-block;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    img {
+      width: 128px;
+      height: 128px;
+      border-radius: 12px;
+    }
+    h2 {
+      margin: 15px 0 5px;
+    }
+    p {
+      color: #555;
+      margin: 0 0 15px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #ff9900;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #e68a00;
+    }
+    a {
+      display: block;
+      margin-top: 15px;
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<div class="token-card">
+  <img src="https://i.ibb.co/fGtQ0kjs/Bank-Note-256.jpg" alt="bNote Logo">
+  <h2>Bank Note (bNote)</h2>
+  <p>PulseChain Token</p>
+  <button id="add-bnote">Add bNote to MetaMask</button>
+  <a href="https://bnotepls.vercel.app" target="_blank">Visit Official Website</a>
+</div>
+
+<script>
+  const TOKEN = {
+    address: "0x473EB99177965277275B3e83bCE3d4884473878D",
+    symbol: "bNote",
+    decimals: 18,
+    image: "https://i.ibb.co/fGtQ0kjs/Bank-Note-256.jpg"
+  };
+
+  async function addBNoteToMetaMask() {
+    if (!window.ethereum || !window.ethereum.request) {
+      alert("MetaMask not detected. Please install MetaMask and try again.");
+      return;
+    }
+
+    try {
+      const wasAdded = await window.ethereum.request({
+        method: "wallet_watchAsset",
+        params: {
+          type: "ERC20",
+          options: TOKEN
+        }
+      });
+
+      if (wasAdded) {
+        alert("bNote was added to your MetaMask.");
+      } else {
+        console.log("User dismissed the add-token prompt");
+      }
+    } catch (err) {
+      console.error("wallet_watchAsset error:", err);
+    }
+  }
+
+  document.getElementById("add-bnote").addEventListener("click", addBNoteToMetaMask);
+</script>
+
+</body>
+</html>
